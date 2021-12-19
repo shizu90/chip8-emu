@@ -130,11 +130,11 @@ void keys(chip8 * chip8, char * game) {
 void emuCycle(chip8 * chip8) {
 
 
-    int vx = 0, vy = 0, x = 0, y = 0, i, l;
-    unsigned hg, pxl;
+    unsigned short vx = 0, vy = 0, x = 0, y = 0, i;
+    unsigned short hg, pxl;
     uc8 * key;
 
-    for(l = 0; l < 10; l++) {
+    
         chip8->opcode = chip8->memory[chip8->PC] << 8 | chip8->memory[chip8->PC + 1];
         printf("Opcode: 0x%04X PC: %04X I: %02X SP: %02X \n", chip8->opcode, chip8->PC, chip8->I, chip8->SP);
         switch(chip8->opcode & 0xF000) {
@@ -294,7 +294,7 @@ void emuCycle(chip8 * chip8) {
                 vy = chip8->v[(chip8->opcode & 0x00F0) >> 4];
 
                 hg = chip8->opcode & 0x000F;
-                chip8->v[0xF] &= 0;
+                chip8->v[0xF] = 0;
 
                 for(y = 0; y < hg; y++) {
                     pxl = chip8->memory[chip8->I + y];
@@ -409,5 +409,5 @@ void emuCycle(chip8 * chip8) {
         }else{
             --chip8->sound_timer;
         }
-    }
+    
 }
