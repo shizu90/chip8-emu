@@ -1,5 +1,5 @@
 #include "common.h"
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -23,7 +23,9 @@ typedef struct {
     us16 opcode; //Opcodes; 
     uc8 gfx[64 * 32]; //Graphics (2048);
 
-    
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
 
 }chip8;
 

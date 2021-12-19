@@ -1,4 +1,4 @@
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -77,7 +77,10 @@ void init(chip8 * chip8, char *romname) {
 
     SDL_Event event;
     SDL_Init(SDL_INIT_EVERYTHING);
-    SDL_SetVideoMode(SCREEN_W, SCREEN_H, SCREEN_BPP, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    
+    chip8->window = SDL_CreateWindow("chimp8", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 64, 32, SDL_WINDOW_SHOWN);
+    chip8->renderer = SDL_CreateRenderer(chip8->window, -1, SDL_RENDERER_ACCELERATED);
+    chip8->texture = SDL_CreateTexture(chip8->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STATIC, 64, 32);
 
     
     for(;;) {
@@ -96,27 +99,23 @@ void draw(chip8 * chip8) {
 
     int x, y;
 
-    SDL_Surface * surface =  SDL_GetVideoSurface();
-    SDL_LockSurface(surface);
-    unsigned int * screen = (unsigned int *)surface->pixels;
-
-    memset(screen, 0, surface->w * surface->h * sizeof(unsigned int));
+    unsigned int screen[64 * 32 * 4];
 
     for(y = 0; y < 32; y++) {
         for(x = 0; x < 64; x++) {
-            screen[x+y*surface->w] = chip8->gfx[(x/10)+(y/10)*64] ? 0xFFFFFFFF : 0;
+            screen[x + (y * 64)] = chip8->gfx[x + (y * 64)] ? 0xFFFFFFFF : 0;
         }
     }
 
-    SDL_UnlockSurface(surface);
-    SDL_Flip(surface);
-    SDL_Delay(15);
+    SDL_UpdateTexture(chip8->texture, NULL, screen, 64 * sizeof(unsigned int));
+    SDL_RenderCopy(chip8->renderer, chip8->texture, NULL, NULL);
+    SDL_RenderPresent(chip8->renderer);
 
 }
 
 void keys(chip8 * chip8, char * game) {
 
-    uc8 * key = SDL_GetKeyState(NULL);
+    const uc8 * key = SDL_GetKeyboardState(NULL);
 
     if(key[SDLK_ESCAPE]) {
         exit(1);
@@ -132,7 +131,7 @@ void emuCycle(chip8 * chip8) {
 
     unsigned short vx = 0, vy = 0, x = 0, y = 0, i;
     unsigned short hg, pxl;
-    uc8 * key;
+    const uc8 * key;
 
     
         chip8->opcode = chip8->memory[chip8->PC] << 8 | chip8->memory[chip8->PC + 1];
@@ -146,18 +145,23 @@ void emuCycle(chip8 * chip8) {
                         break;
 
                     case 0x000E: //Return from subroutine
-                        chip8->PC = chip8->stack[(--chip8->SP) & 0xF] + 2;
+                        chip8->PC = chip8->stack[(chip8->SP)];
+                        --chip8->SP;
+                        chip8->PC += 2; 
                         break;
 
                     default:
-                        printf("Invalid opcode: 0x%X \n", chip8->opcode);        
+                        printf("Invalid opcode: 0x%X \n", chip8->opcode);
+                        break;        
                 }
+                break;
             case 0x1000: //Jump to address 0x1NNN
                 chip8->PC = chip8->opcode & 0x0FFF;
                 break;
 
             case 0x2000: //Call subroutine at 0x2NNN
-                chip8->stack[(chip8->SP++) & 0xF] = chip8->PC;
+                chip8->SP++;   
+                chip8->stack[(chip8->SP)] = chip8->PC;
                 chip8->PC = chip8->opcode & 0x0FFF;
                 break;
 
@@ -300,11 +304,11 @@ void emuCycle(chip8 * chip8) {
                     pxl = chip8->memory[chip8->I + y];
                     for(x = 0; x < 8; x++) {
                         if(pxl & (0x80 >> x)) {
-                            if(chip8->gfx[x+vx+(y+vy) * 64]) {
+                            if(chip8->gfx[x+vx+((y+vy) * 64)]) {
                                 chip8->v[0xF] = 1;
 
                             }
-                            chip8->gfx[x+vx+(y+vy)*64] ^= 1;
+                            chip8->gfx[x+vx+((y+vy)*64)] ^= 1;
                         }
                     }
                 }
@@ -314,7 +318,7 @@ void emuCycle(chip8 * chip8) {
             case 0xE000: 
                 switch(chip8->opcode & 0x00FF) {
                     case 0x009E: //Skip next instruction if key with the value of Vx is pressed
-                        key = SDL_GetKeyState(NULL);
+                        key = SDL_GetKeyboardState(NULL);
                         if(key[keypad[chip8->v[(chip8->opcode & 0x0F00) >> 8]]]) {
                             chip8->PC += 4;
                         }else {
@@ -323,7 +327,7 @@ void emuCycle(chip8 * chip8) {
 
                         break;
                     case 0x00A1: //Skip next instruction if key with the value of Vx is not pressed
-                        key = SDL_GetKeyState(NULL);
+                        key = SDL_GetKeyboardState(NULL);
                         if(!key[keypad[chip8->v[(chip8->opcode & 0x0F00) >> 8]]]) {
                             chip8->PC += 4;
                         }else{
@@ -344,7 +348,7 @@ void emuCycle(chip8 * chip8) {
                         break;
 
                     case 0x000A: //Wait for a key press, store the value of the key in Vx
-                        key = SDL_GetKeyState(NULL);
+                        key = SDL_GetKeyboardState(NULL);
                         for(i = 0; i < 0x10; i++) {
                             if(key[keypad[i]]) {
                                 chip8->v[(chip8->opcode & 0x0F00) >> 8] = 1;
