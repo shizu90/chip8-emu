@@ -11,7 +11,6 @@
 
 int keypad[16] = {
     
-        SDLK_0,
         SDLK_1,
         SDLK_2,
         SDLK_3,
@@ -78,7 +77,7 @@ void init(chip8 * chip8, char *romname) {
     SDL_Event event;
     SDL_Init(SDL_INIT_EVERYTHING);
     
-    chip8->window = SDL_CreateWindow("chimp8", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 64, 32, SDL_WINDOW_SHOWN);
+    chip8->window = SDL_CreateWindow("epic-chip8emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_W, SCREEN_H, SDL_WINDOW_SHOWN);
     chip8->renderer = SDL_CreateRenderer(chip8->window, -1, SDL_RENDERER_ACCELERATED);
     chip8->texture = SDL_CreateTexture(chip8->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STATIC, 64, 32);
 
@@ -99,7 +98,7 @@ void draw(chip8 * chip8) {
 
     int x, y;
 
-    unsigned int screen[64 * 32 * 4];
+    unsigned int screen[64 * 32];
 
     for(y = 0; y < 32; y++) {
         for(x = 0; x < 64; x++) {
@@ -340,7 +339,7 @@ void emuCycle(chip8 * chip8) {
                 }
                 break;
 
-            case 0x0F000: 
+            case 0xF000: 
                 switch(chip8->opcode & 0x00FF) {
                     case 0x0007: //Set Vx = delay timer value
                         chip8->v[chip8->opcode & 0x0F00] = chip8->delay_timer;
@@ -401,14 +400,13 @@ void emuCycle(chip8 * chip8) {
                     default:
                         printf("Invalid opcode: %04X", chip8->opcode); 
                 }
-                
-                
+                break;         
         }
 
         if(chip8->delay_timer > 0) {
             --chip8->delay_timer;
         }
-        if(chip8->sound_timer == 1) {
+        else if(chip8->sound_timer == 1) {
             printf("BEEP! \n");
         }else{
             --chip8->sound_timer;
